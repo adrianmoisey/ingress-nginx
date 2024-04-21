@@ -1034,6 +1034,7 @@ func isValidByteSize(input interface{}, isOffset bool) bool {
 type ingressInformation struct {
 	Namespace   string
 	Path        string
+	PathType    *networkingv1.PathType
 	Rule        string
 	Service     string
 	ServicePort string
@@ -1060,7 +1061,7 @@ func (info *ingressInformation) Equal(other *ingressInformation) bool {
 	return true
 }
 
-func getIngressInformation(i, h, p interface{}) *ingressInformation {
+func getIngressInformation(i, h, p, t interface{}) *ingressInformation {
 	ing, ok := i.(*ingress.Ingress)
 	if !ok {
 		klog.Errorf("expected an '*ingress.Ingress' type but %T was returned", i)
@@ -1079,6 +1080,12 @@ func getIngressInformation(i, h, p interface{}) *ingressInformation {
 		return &ingressInformation{}
 	}
 
+	ingressPathType, ok := t.(*networkingv1.PathType)
+	if !ok {
+		klog.Errorf("expected a '*networkingv1.PathType' type but %T was returned", p)
+		return &ingressInformation{}
+	}
+
 	if ing == nil {
 		return &ingressInformation{}
 	}
@@ -1088,6 +1095,7 @@ func getIngressInformation(i, h, p interface{}) *ingressInformation {
 		Rule:        ing.GetName(),
 		Annotations: ing.Annotations,
 		Path:        ingressPath,
+		PathType:    ingressPathType,
 	}
 
 	if ingressPath == "" {
@@ -1123,7 +1131,7 @@ func getIngressInformation(i, h, p interface{}) *ingressInformation {
 		}
 
 		for _, rPath := range rule.HTTP.Paths {
-			if ingressPath != rPath.Path {
+			if ingressPath != rPath.Path && ingressPathType != rPath.PathType {
 				continue
 			}
 
