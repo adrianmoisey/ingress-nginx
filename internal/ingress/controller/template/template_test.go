@@ -31,7 +31,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pmezard/go-difflib/difflib"
 	apiv1 "k8s.io/api/core/v1"
-	networking "k8s.io/api/networking/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/ingress-nginx/internal/ingress/annotations/authreq"
@@ -54,7 +54,8 @@ func init() {
 }
 
 var (
-	pathPrefix networking.PathType = networking.PathTypePrefix
+	pathPrefix networkingv1.PathType = networkingv1.PathTypePrefix
+	pathExact  networkingv1.PathType = networkingv1.PathTypeExact
 
 	// TODO: add tests for SSLPassthrough
 	tmplFuncTestcases = map[string]struct {
@@ -1164,19 +1165,19 @@ func TestGetIngressInformation(t *testing.T) {
 			"wrongtype",
 			"host1",
 			"/ok",
-			"Exact",
+			"",
 			&ingressInformation{},
 		},
 		"wrong path type": {
 			&ingress.Ingress{},
 			"host1",
 			10,
-			"Exact",
+			"",
 			&ingressInformation{},
 		},
 		"valid ingress definition with name validIng in namespace default  using a service with name a-svc port number 8080": {
 			&ingress.Ingress{
-				Ingress: networking.Ingress{
+				Ingress: networkingv1.Ingress{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "validIng",
 						Namespace: apiv1.NamespaceDefault,
@@ -1184,11 +1185,11 @@ func TestGetIngressInformation(t *testing.T) {
 							"ingress.annotation": "ok",
 						},
 					},
-					Spec: networking.IngressSpec{
-						DefaultBackend: &networking.IngressBackend{
-							Service: &networking.IngressServiceBackend{
+					Spec: networkingv1.IngressSpec{
+						DefaultBackend: &networkingv1.IngressBackend{
+							Service: &networkingv1.IngressServiceBackend{
 								Name: "a-svc",
-								Port: networking.ServiceBackendPort{
+								Port: networkingv1.ServiceBackendPort{
 									Number: 8080,
 								},
 							},
@@ -1198,7 +1199,7 @@ func TestGetIngressInformation(t *testing.T) {
 			},
 			"host1",
 			"",
-			"Exact",
+			"",
 			&ingressInformation{
 				Namespace: "default",
 				Rule:      "validIng",
@@ -1210,9 +1211,9 @@ func TestGetIngressInformation(t *testing.T) {
 				ServicePort: "8080",
 			},
 		},
-		"valid ingress definition with name validIng in namespace default  using a service with name a-svc port name b-svc": {
+		"valid ingress definition with name validIng in namespace default using a service with name a-svc port name b-svc": {
 			&ingress.Ingress{
-				Ingress: networking.Ingress{
+				Ingress: networkingv1.Ingress{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "validIng",
 						Namespace: apiv1.NamespaceDefault,
@@ -1220,11 +1221,11 @@ func TestGetIngressInformation(t *testing.T) {
 							"ingress.annotation": "ok",
 						},
 					},
-					Spec: networking.IngressSpec{
-						DefaultBackend: &networking.IngressBackend{
-							Service: &networking.IngressServiceBackend{
+					Spec: networkingv1.IngressSpec{
+						DefaultBackend: &networkingv1.IngressBackend{
+							Service: &networkingv1.IngressServiceBackend{
 								Name: "a-svc",
-								Port: networking.ServiceBackendPort{
+								Port: networkingv1.ServiceBackendPort{
 									Name: "b-svc",
 								},
 							},
@@ -1234,7 +1235,7 @@ func TestGetIngressInformation(t *testing.T) {
 			},
 			"host1",
 			"",
-			"Exact",
+			"",
 			&ingressInformation{
 				Namespace: "default",
 				Rule:      "validIng",
@@ -1248,7 +1249,7 @@ func TestGetIngressInformation(t *testing.T) {
 		},
 		"valid ingress definition with name validIng in namespace default": {
 			&ingress.Ingress{
-				Ingress: networking.Ingress{
+				Ingress: networkingv1.Ingress{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "validIng",
 						Namespace: apiv1.NamespaceDefault,
@@ -1256,9 +1257,9 @@ func TestGetIngressInformation(t *testing.T) {
 							"ingress.annotation": "ok",
 						},
 					},
-					Spec: networking.IngressSpec{
-						DefaultBackend: &networking.IngressBackend{
-							Service: &networking.IngressServiceBackend{
+					Spec: networkingv1.IngressSpec{
+						DefaultBackend: &networkingv1.IngressBackend{
+							Service: &networkingv1.IngressServiceBackend{
 								Name: "a-svc",
 							},
 						},
@@ -1267,7 +1268,7 @@ func TestGetIngressInformation(t *testing.T) {
 			},
 			"host1",
 			"",
-			"Exact",
+			"",
 			&ingressInformation{
 				Namespace: "default",
 				Rule:      "validIng",
@@ -1280,7 +1281,7 @@ func TestGetIngressInformation(t *testing.T) {
 		},
 		"valid ingress definition with name demo in namespace something and path /ok using a service with name b-svc port 80": {
 			&ingress.Ingress{
-				Ingress: networking.Ingress{
+				Ingress: networkingv1.Ingress{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "demo",
 						Namespace: "something",
@@ -1288,20 +1289,20 @@ func TestGetIngressInformation(t *testing.T) {
 							"ingress.annotation": "ok",
 						},
 					},
-					Spec: networking.IngressSpec{
-						Rules: []networking.IngressRule{
+					Spec: networkingv1.IngressSpec{
+						Rules: []networkingv1.IngressRule{
 							{
 								Host: "foo.bar",
-								IngressRuleValue: networking.IngressRuleValue{
-									HTTP: &networking.HTTPIngressRuleValue{
-										Paths: []networking.HTTPIngressPath{
+								IngressRuleValue: networkingv1.IngressRuleValue{
+									HTTP: &networkingv1.HTTPIngressRuleValue{
+										Paths: []networkingv1.HTTPIngressPath{
 											{
 												Path:     "/ok",
 												PathType: &pathPrefix,
-												Backend: networking.IngressBackend{
-													Service: &networking.IngressServiceBackend{
+												Backend: networkingv1.IngressBackend{
+													Service: &networkingv1.IngressServiceBackend{
 														Name: "b-svc",
-														Port: networking.ServiceBackendPort{
+														Port: networkingv1.ServiceBackendPort{
 															Number: 80,
 														},
 													},
@@ -1318,7 +1319,7 @@ func TestGetIngressInformation(t *testing.T) {
 			},
 			"foo.bar",
 			"/ok",
-			"Exact",
+			"Prefix",
 			&ingressInformation{
 				Namespace: "something",
 				Rule:      "demo",
@@ -1331,7 +1332,7 @@ func TestGetIngressInformation(t *testing.T) {
 		},
 		"valid ingress definition with name demo in namespace something and path /ok using a service with name b-svc port name b-svc-80": {
 			&ingress.Ingress{
-				Ingress: networking.Ingress{
+				Ingress: networkingv1.Ingress{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "demo",
 						Namespace: "something",
@@ -1339,20 +1340,20 @@ func TestGetIngressInformation(t *testing.T) {
 							"ingress.annotation": "ok",
 						},
 					},
-					Spec: networking.IngressSpec{
-						Rules: []networking.IngressRule{
+					Spec: networkingv1.IngressSpec{
+						Rules: []networkingv1.IngressRule{
 							{
 								Host: "foo.bar",
-								IngressRuleValue: networking.IngressRuleValue{
-									HTTP: &networking.HTTPIngressRuleValue{
-										Paths: []networking.HTTPIngressPath{
+								IngressRuleValue: networkingv1.IngressRuleValue{
+									HTTP: &networkingv1.HTTPIngressRuleValue{
+										Paths: []networkingv1.HTTPIngressPath{
 											{
 												Path:     "/ok",
 												PathType: &pathPrefix,
-												Backend: networking.IngressBackend{
-													Service: &networking.IngressServiceBackend{
+												Backend: networkingv1.IngressBackend{
+													Service: &networkingv1.IngressServiceBackend{
 														Name: "b-svc",
-														Port: networking.ServiceBackendPort{
+														Port: networkingv1.ServiceBackendPort{
 															Name: "b-svc-80",
 														},
 													},
@@ -1369,7 +1370,7 @@ func TestGetIngressInformation(t *testing.T) {
 			},
 			"foo.bar",
 			"/ok",
-			"Exact",
+			"Prefix",
 			&ingressInformation{
 				Namespace: "something",
 				Rule:      "demo",
@@ -1382,7 +1383,7 @@ func TestGetIngressInformation(t *testing.T) {
 		},
 		"valid ingress definition with name demo in namespace something and path /ok with a nil backend service": {
 			&ingress.Ingress{
-				Ingress: networking.Ingress{
+				Ingress: networkingv1.Ingress{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "demo",
 						Namespace: "something",
@@ -1390,17 +1391,17 @@ func TestGetIngressInformation(t *testing.T) {
 							"ingress.annotation": "ok",
 						},
 					},
-					Spec: networking.IngressSpec{
-						Rules: []networking.IngressRule{
+					Spec: networkingv1.IngressSpec{
+						Rules: []networkingv1.IngressRule{
 							{
 								Host: "foo.bar",
-								IngressRuleValue: networking.IngressRuleValue{
-									HTTP: &networking.HTTPIngressRuleValue{
-										Paths: []networking.HTTPIngressPath{
+								IngressRuleValue: networkingv1.IngressRuleValue{
+									HTTP: &networkingv1.HTTPIngressRuleValue{
+										Paths: []networkingv1.HTTPIngressPath{
 											{
 												Path:     "/ok",
 												PathType: &pathPrefix,
-												Backend: networking.IngressBackend{
+												Backend: networkingv1.IngressBackend{
 													Service: nil,
 												},
 											},
@@ -1415,7 +1416,7 @@ func TestGetIngressInformation(t *testing.T) {
 			},
 			"foo.bar",
 			"/ok",
-			"Exact",
+			"Prefix",
 			&ingressInformation{
 				Namespace: "something",
 				Rule:      "demo",
@@ -1426,7 +1427,7 @@ func TestGetIngressInformation(t *testing.T) {
 		},
 		"valid ingress definition with name demo in namespace something and path /ok with both a nil service and a valid one": {
 			&ingress.Ingress{
-				Ingress: networking.Ingress{
+				Ingress: networkingv1.Ingress{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "demo",
 						Namespace: "something",
@@ -1434,27 +1435,27 @@ func TestGetIngressInformation(t *testing.T) {
 							"ingress.annotation": "ok",
 						},
 					},
-					Spec: networking.IngressSpec{
-						Rules: []networking.IngressRule{
+					Spec: networkingv1.IngressSpec{
+						Rules: []networkingv1.IngressRule{
 							{
 								Host: "foo.bar",
-								IngressRuleValue: networking.IngressRuleValue{
-									HTTP: &networking.HTTPIngressRuleValue{
-										Paths: []networking.HTTPIngressPath{
+								IngressRuleValue: networkingv1.IngressRuleValue{
+									HTTP: &networkingv1.HTTPIngressRuleValue{
+										Paths: []networkingv1.HTTPIngressPath{
 											{
 												Path:     "/ok",
 												PathType: &pathPrefix,
-												Backend: networking.IngressBackend{
+												Backend: networkingv1.IngressBackend{
 													Service: nil,
 												},
 											},
 											{
 												Path:     "/oksvc",
 												PathType: &pathPrefix,
-												Backend: networking.IngressBackend{
-													Service: &networking.IngressServiceBackend{
+												Backend: networkingv1.IngressBackend{
+													Service: &networkingv1.IngressServiceBackend{
 														Name: "b-svc",
-														Port: networking.ServiceBackendPort{
+														Port: networkingv1.ServiceBackendPort{
 															Name: "b-svc-80",
 														},
 													},
@@ -1471,7 +1472,7 @@ func TestGetIngressInformation(t *testing.T) {
 			},
 			"foo.bar",
 			"/oksvc",
-			"Exact",
+			"Prefix",
 			&ingressInformation{
 				Namespace: "something",
 				Rule:      "demo",
