@@ -55,6 +55,7 @@ func init() {
 
 var (
 	pathPrefix networking.PathType = networking.PathTypePrefix
+	pathExact  networking.PathType = networking.PathTypeExact
 
 	// TODO: add tests for SSLPassthrough
 	tmplFuncTestcases = map[string]struct {
@@ -1318,7 +1319,7 @@ func TestGetIngressInformation(t *testing.T) {
 			},
 			"foo.bar",
 			"/ok",
-			"Prefix",
+			&pathPrefix,
 			&ingressInformation{
 				Namespace: "something",
 				Rule:      "demo",
@@ -1369,7 +1370,7 @@ func TestGetIngressInformation(t *testing.T) {
 			},
 			"foo.bar",
 			"/ok",
-			"Prefix",
+			&pathPrefix,
 			&ingressInformation{
 				Namespace: "something",
 				Rule:      "demo",
@@ -1415,7 +1416,7 @@ func TestGetIngressInformation(t *testing.T) {
 			},
 			"foo.bar",
 			"/ok",
-			"Prefix",
+			&pathPrefix,
 			&ingressInformation{
 				Namespace: "something",
 				Rule:      "demo",
@@ -1471,7 +1472,7 @@ func TestGetIngressInformation(t *testing.T) {
 			},
 			"foo.bar",
 			"/oksvc",
-			"Prefix",
+			&pathPrefix,
 			&ingressInformation{
 				Namespace: "something",
 				Rule:      "demo",
@@ -1480,6 +1481,62 @@ func TestGetIngressInformation(t *testing.T) {
 				},
 				Service:     "b-svc",
 				ServicePort: "b-svc-80",
+			},
+		},
+		"adrian": {
+			&ingress.Ingress{
+				Ingress: networking.Ingress{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "demo",
+						Namespace: "something",
+						Annotations: map[string]string{
+							"ingress.annotation": "ok",
+						},
+					},
+					Spec: networking.IngressSpec{
+						Rules: []networking.IngressRule{
+							{
+								Host: "foo.bar",
+								IngressRuleValue: networking.IngressRuleValue{
+									HTTP: &networking.HTTPIngressRuleValue{
+										Paths: []networking.HTTPIngressPath{
+											{
+												Path:     "/",
+												PathType: &pathPrefix,
+												Backend: networking.IngressBackend{
+													Service: &networking.IngressServiceBackend{
+														Name: "a-svc",
+													},
+												},
+											},
+											{
+												Path:     "/",
+												PathType: &pathExact,
+												Backend: networking.IngressBackend{
+													Service: &networking.IngressServiceBackend{
+														Name: "b-svc",
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			"foo.bar",
+			"//",
+			&pathExact,
+			&ingressInformation{
+				Path:      "/",
+				Namespace: "something",
+				Rule:      "demo",
+				Annotations: map[string]string{
+					"ingress.annotation": "ok",
+				},
+				Service: "b-svc",
 			},
 		},
 	}

@@ -37,6 +37,7 @@ import (
 	text_template "text/template"
 
 	networkingv1 "k8s.io/api/networking/v1"
+	v1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 
@@ -1034,7 +1035,6 @@ func isValidByteSize(input interface{}, isOffset bool) bool {
 type ingressInformation struct {
 	Namespace   string
 	Path        string
-	PathType    string
 	Rule        string
 	Service     string
 	ServicePort string
@@ -1080,10 +1080,10 @@ func getIngressInformation(i, h, p, t interface{}) *ingressInformation {
 		return &ingressInformation{}
 	}
 
-	ingressPathType, ok := t.(string)
+	ingressPathType, ok := t.(*v1.PathType)
 	if !ok {
-		klog.Errorf("expected a 'string' type but %T was returned", t)
-		return &ingressInformation{}
+		klog.Errorf("expected a '*v1.PathType' type but %T was returned", t)
+		//return &ingressInformation{}
 	}
 
 	if ing == nil {
@@ -1095,7 +1095,6 @@ func getIngressInformation(i, h, p, t interface{}) *ingressInformation {
 		Rule:        ing.GetName(),
 		Annotations: ing.Annotations,
 		Path:        ingressPath,
-		PathType:    ingressPathType,
 	}
 
 	if ingressPath == "" {
@@ -1131,7 +1130,13 @@ func getIngressInformation(i, h, p, t interface{}) *ingressInformation {
 		}
 
 		for _, rPath := range rule.HTTP.Paths {
-			if ingressPath != rPath.Path || ingressPathType != string(*rPath.PathType) {
+			if ingressPath != rPath.Path {
+				continue
+			}
+
+			klog.Errorf("Got ingressPathType %v and rPath.PathType %v", *ingressPathType, *rPath.PathType)
+			if *ingressPathType != *rPath.PathType {
+				klog.Errorf("They don't match, continuing")
 				continue
 			}
 
