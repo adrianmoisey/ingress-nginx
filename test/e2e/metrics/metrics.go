@@ -174,6 +174,15 @@ var _ = framework.IngressNginxDescribe("[metrics] adrian", func() {
 		fmt.Println("ADRIAN HERE")
 		fmt.Println(mf)
 		fmt.Println("ADRIAN HERE2")
+		assert.Len(ginkgo.GinkgoT(), mf.Metric, 2)
+		metric1 := mf.Metric[0]
+		metric2 := mf.Metric[1]
+
+		label1, _ := f.GetLabelValue(metric1, "service")
+		label2, _ := f.GetLabelValue(metric2, "service")
+		fmt.Println(label1)
+		fmt.Println(label2)
+
 		assert.ErrorContains(ginkgo.GinkgoT(), err, "nginx_ingress_controller_request_size")
 		assert.Nil(ginkgo.GinkgoT(), mf)
 	})
