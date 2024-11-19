@@ -139,3 +139,42 @@ var _ = framework.IngressNginxDescribe("[metrics] exported prometheus metrics", 
 		assert.Nil(ginkgo.GinkgoT(), reqMetrics)
 	})
 })
+
+var _ = framework.IngressNginxDescribe("[metrics] adrian", func() {
+	f := framework.NewDefaultFramework("metrics")
+	host := "foo.com"
+
+	ginkgo.BeforeEach(func() {
+		f.NewEchoDeployment()
+		f.NewEchoDeployment(framework.WithName("echo2"))
+		f.EnsureIngress(framework.NewSingleIngressWithMultiplePathsOfDifferentTypes("adrian", host, f.Namespace, "service", 80, nil))
+		f.WaitForNginxServer(host,
+			func(server string) bool {
+				return strings.Contains(server, fmt.Sprintf("server_name %s ;", host)) &&
+					strings.Contains(server, "proxy_pass http://upstream_balancer;")
+			})
+	})
+
+	ginkgo.It("exclude socket request metrics are absent - ADRIAN", func() {
+		f.HTTPTestClient().
+			GET("/").
+			WithHeader("Host", host).
+			Expect().
+			Status(http.StatusOK)
+		f.HTTPTestClient().
+			GET("/boop").
+			WithHeader("Host", host).
+			Expect().
+			Status(http.StatusOK)
+
+		time.Sleep(waitForMetrics)
+
+		ip := f.GetNginxPodIP()
+		mf, err := f.GetMetric("nginx_ingress_controller_requests", ip)
+		fmt.Println("ADRIAN HERE")
+		fmt.Println(mf)
+		fmt.Println("ADRIAN HERE2")
+		assert.ErrorContains(ginkgo.GinkgoT(), err, "nginx_ingress_controller_request_size")
+		assert.Nil(ginkgo.GinkgoT(), mf)
+	})
+})
