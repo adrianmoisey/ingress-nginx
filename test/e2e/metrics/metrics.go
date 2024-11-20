@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -169,21 +170,23 @@ var _ = framework.IngressNginxDescribe("[metrics] adrian", func() {
 
 		time.Sleep(waitForMetrics)
 
+		services := []string{framework.EchoService, "echo2"}
+		fetchedServices := []string{}
+
 		ip := f.GetNginxPodIP()
 		mf, err := f.GetMetric("nginx_ingress_controller_requests", ip)
-		fmt.Println("ADRIAN HERE")
-		fmt.Println(mf)
-		fmt.Println("ADRIAN HERE2")
+
 		assert.Len(ginkgo.GinkgoT(), mf.Metric, 2)
-		metric1 := mf.Metric[0]
-		metric2 := mf.Metric[1]
 
-		label1, _ := f.GetLabelValue(metric1, "service")
-		label2, _ := f.GetLabelValue(metric2, "service")
-		fmt.Println(label1)
-		fmt.Println(label2)
+		for _, metric := range mf.Metric {
+			label, _ := f.GetLabelValue(metric, "service")
+			fetchedServices = append(fetchedServices, label)
+		}
 
-		assert.ErrorContains(ginkgo.GinkgoT(), err, "nginx_ingress_controller_request_size")
-		assert.Nil(ginkgo.GinkgoT(), mf)
+		sort.Strings(services)
+		sort.Strings(fetchedServices)
+
+		assert.Equal(ginkgo.GinkgoT(), services, fetchedServices)
+		assert.NoError(ginkgo.GinkgoT(), err)
 	})
 })
